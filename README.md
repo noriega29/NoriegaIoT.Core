@@ -43,6 +43,7 @@ NoriegaIoT.Core/
 │       └── main.ino
 │
 ├── library.properties
+├── LICENSE
 └── README.md
 ```
 
@@ -174,15 +175,17 @@ El proyecto se encuentra actualmente en desarrollo.
 
 ### Componentes disponibles
 
+
 * [x] `Button`
+* [x] `Clock`
 * [x] `MatrixKeyboard`
+* [x] `Settings`
 
 ### Componentes previstos
 
 * [ ] `Display`
+* [ ] `Menu`
 * [ ] `Navigation`
-* [ ] `Settings`
-* [ ] `Clock`
 * [ ] Comunicación
 * [ ] Otros componentes comunes
 
