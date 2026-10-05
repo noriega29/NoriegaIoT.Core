@@ -31,6 +31,23 @@ private:
     const char* lastReleasedKey;
 
     // -----------------------------------------
+    // AUTO-REPEAT
+    // -----------------------------------------
+    unsigned long repeatStartTime[2][3];
+    unsigned long lastRepeatTime[2][3];
+
+    // Tiempo en milisegundos antes de que comience el auto-repeat
+    const unsigned long repeatDelay = 500;
+
+    // Intervalo de tiempo entre repeticiones lentas (en milisegundos)
+    const unsigned long repeatIntervalLento = 150;
+    // Intervalo de tiempo entre repeticiones rápidas (en milisegundos)
+    const unsigned long repeatIntervalRapido = 80;
+
+    // Tiempo en milisegundos antes de que comience el auto-repeat rápido
+    const unsigned long repeatTiempoRapido = 3000;
+
+    // -----------------------------------------
     // MÁSCARAS DEL PCF8574
     // -----------------------------------------
 
@@ -74,6 +91,11 @@ public:
     // -----------------------------------------
 
     bool isPressed(const char* key);
+
+    // -----------------------------------------
+    // AUTO-REPEAT
+    // -----------------------------------------
+    bool isRepeated(const char* key);
 };
 
 #endif

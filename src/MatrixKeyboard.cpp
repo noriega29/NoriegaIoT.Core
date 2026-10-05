@@ -24,6 +24,9 @@ MatrixKeyboard::MatrixKeyboard(
             stableState[r][c] = false;
 
             lastDebounceTime[r][c] = 0;
+
+            repeatStartTime[r][c] = 0;
+            lastRepeatTime[r][c] = 0;
         }
     }
 }
@@ -103,33 +106,26 @@ void MatrixKeyboard::update() {
             // ESTADO ESTABLE
             // ─────────────────────────────────
 
-            if ((millis() - lastDebounceTime[r][c])
-                >= debounceDelay) {
+            if ((millis() - lastDebounceTime[r][c]) >= debounceDelay) {
 
                 if (currentReading != stableState[r][c]) {
 
                     stableState[r][c] = currentReading;
-
 
                     // ─────────────────────────
                     // TECLA PRESIONADA
                     // ─────────────────────────
 
                     if (stableState[r][c]) {
-
-                        lastPressedKey =
-                            keymap[r][c];
+                        lastPressedKey = keymap[r][c];
                     }
-
 
                     // ─────────────────────────
                     // TECLA LIBERADA
                     // ─────────────────────────
 
                     else {
-
-                        lastReleasedKey =
-                            keymap[r][c];
+                        lastReleasedKey = keymap[r][c];
                     }
                 }
             }
@@ -207,6 +203,76 @@ bool MatrixKeyboard::isPressed(const char* key) {
             if (strcmp(keymap[r][c], key) == 0) {
 
                 return stableState[r][c];
+            }
+        }
+    }
+
+    return false;
+}
+
+// ─────────────────────────────────────────────
+// AUTO-REPEAT
+// ─────────────────────────────────────────────
+bool MatrixKeyboard::isRepeated(const char* key) {
+    
+    for (int r = 0; r < 2; r++) {
+        
+        for (int c = 0; c < 3; c++) {
+            
+            // Buscar la tecla solicitada
+            if (strcmp(keymap[r][c], key) == 0) {
+                
+                // ─────────────────────────────
+                // TECLA NO PRESIONADA
+                // ─────────────────────────────
+                if (!stableState[r][c]) {
+                    repeatStartTime[r][c] = 0;
+                    lastRepeatTime[r][c] = 0;
+                    return false;
+                }
+
+                unsigned long ahora = millis();
+
+                // ─────────────────────────────
+                // PRIMERA PULSACIÓN
+                // ─────────────────────────────
+                if (repeatStartTime[r][c] == 0) {
+                    repeatStartTime[r][c] = ahora;
+                    lastRepeatTime[r][c] = ahora;
+                    return true;
+                }
+
+                // ─────────────────────────────
+                // TIEMPO TOTAL PRESIONADO
+                // ─────────────────────────────
+                unsigned long tiempoPresionado = ahora - repeatStartTime[r][c];
+
+                // ─────────────────────────────
+                // ESPERA ANTES DE REPETIR
+                // ─────────────────────────────
+                if (tiempoPresionado < repeatDelay) {
+                    return false;
+                }
+
+                // ─────────────────────────────
+                // SELECCIONAR VELOCIDAD
+                // ─────────────────────────────
+                unsigned long intervalo;
+                if (tiempoPresionado < repeatTiempoRapido) { 
+                    intervalo = repeatIntervalLento;
+                } else {
+                    intervalo = repeatIntervalRapido;
+                }
+
+                // ─────────────────────────────
+                // ¿YA TOCA REPETIR?
+                // ─────────────────────────────
+                if ((ahora - lastRepeatTime[r][c]) >= intervalo) {
+                    lastRepeatTime[r][c] = ahora;
+                    return true;
+                }
+
+                return false;
             }
         }
     }
