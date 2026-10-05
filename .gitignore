@@ -1,0 +1,21 @@
+# VS Code
+.vscode/
+
+# PlatformIO
+.pio/
+
+# Arduino IDE
+*.ino.d
+
+# Compilación
+build/
+out/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Archivos temporales
+*.tmp
+*.temp
+*.bak
