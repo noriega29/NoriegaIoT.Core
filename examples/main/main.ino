@@ -5,6 +5,7 @@
 #include "MatrixKeyboard.h"
 #include "Clock.h"
 #include "Settings.h"
+#include "Navigation.h"
 
 // ─────────────────────────────
 // OBJETOS
@@ -29,44 +30,7 @@ const char* keys[2][3] = {
 // Inicializamos el objeto pasándole la dirección y el mapa
 MatrixKeyboard keyboard(0x20, keys);
 
-// ─────────────────────────────
-// ESTADOS DEl PROGRAMA
-// ─────────────────────────────
-enum Estado {
-  MENU_PRINCIPAL,
-
-  PANTALLA_HORA_FECHA,
-  PANTALLA_TEMPERATURA,
-  PANTALLA_HUMEDAD,
-  PANTALLA_PRESION,
-
-  MENU_CONFIGURACION,
-
-  MENU_UNIDADES,
-  MENU_INTERVALO,
-  MENU_HORA_FECHA,
-  MENU_FORMATO_HORA,
-  MENU_CALIBRACION,
-
-  PANTALLA_EDITAR_HORA,
-  PANTALLA_EDITAR_FECHA
-};
-
-// Estado actual del programa
-Estado estadoActual = MENU_PRINCIPAL;
-
-// ─────────────────────────────
-// ESTRUCTURA DE NAVEGACIÓN
-// ─────────────────────────────
-struct Navegacion {
-  Estado estado;
-  int opcionSeleccionada;
-};
-
-const int MAX_PROFUNDIDAD = 10; // Tamaño máximo del historial de navegación
-Navegacion pila[MAX_PROFUNDIDAD];
-
-int posicionPila = 0; // Posición actual en la pila de navegación
+Navigation navigation;
 
 // ─────────────────────────────
 // ESTRUCTURA DE OPCIONES DEL MENÚ
@@ -112,12 +76,6 @@ OpcionMenu menuHoraFecha[] = {
 };
 
 const int NUM_OPCIONES_HORA_FECHA = sizeof(menuHoraFecha) / sizeof(menuHoraFecha[0]);
-
-// ─────────────────────────────
-// OPCIÓN SELECCIONADA
-// ─────────────────────────────
-// Índice de la opción actualmente seleccionada en el menú
-int opcionSeleccionada = 0;
 
 // ─────────────────────────────
 // CONFIGURACIÓN DEL DISPOSITIVO
@@ -219,7 +177,7 @@ void loop() {
   keyboard.update();
 
   // 2. Ejecutar lógica del estado actual
-  switch (estadoActual) {
+  switch (navigation.getEstado()) {
 
     case MENU_PRINCIPAL:
       manejarMenu(menuPrincipal, NUM_OPCIONES_PRINCIPAL);
@@ -332,9 +290,12 @@ void manejarMenu(OpcionMenu menu[], int numOpciones) {
 // ─────────────────────────────
 void subir(int numOpciones) {
 
-  if (opcionSeleccionada > 0) {
+  int opcion = navigation.getOpcionSeleccionada();
 
-    opcionSeleccionada--;
+  if (opcion > 0) {
+
+    opcion--;
+    navigation.setOpcionSeleccionada(opcion);
     mostrarMenuActual();
   }
 }
@@ -345,9 +306,12 @@ void subir(int numOpciones) {
 // ─────────────────────────────
 void bajar(int numOpciones) {
 
-  if (opcionSeleccionada < numOpciones - 1) {
+  int opcion = navigation.getOpcionSeleccionada();
 
-    opcionSeleccionada++;
+  if (opcion < numOpciones - 1) {
+
+    opcion++;
+    navigation.setOpcionSeleccionada(opcion);
     mostrarMenuActual();
   }
 }
@@ -358,8 +322,10 @@ void bajar(int numOpciones) {
 // ─────────────────────────────
 void seleccionar(OpcionMenu menu[]) {
 
+  int opcion = navigation.getOpcionSeleccionada();
+
   // Obtener el estado al que conduce la opción seleccionada
-  Estado destino = menu[opcionSeleccionada].destino;
+  Estado destino = menu[opcion].destino;
 
   // Entrar al nuevo estado
   entrarEstado(destino);
@@ -372,15 +338,7 @@ void seleccionar(OpcionMenu menu[]) {
 void regresar() {
 
   // Regresar al estado anterior utilizando la pila de navegación
-  if (posicionPila > 0) {
-
-    // Retroceder en la pila de navegación
-    posicionPila--;
-
-    // Restaurar el estado y la opción seleccionada desde la pila
-    estadoActual = pila[posicionPila].estado;
-    opcionSeleccionada = pila[posicionPila].opcionSeleccionada;
-
+  if (navigation.regresar()) {
     mostrarEstado();
   }
 }
@@ -845,17 +803,17 @@ void mostrarMenuActual() {
   int cantidadOpciones;
 
   // Determinar qué menú mostrar según el estado actual
-  if (estadoActual == MENU_PRINCIPAL) {
+  if (navigation.getEstado() == MENU_PRINCIPAL) {
 
     menuActual = menuPrincipal;
     cantidadOpciones = NUM_OPCIONES_PRINCIPAL;
   }
-  else if (estadoActual == MENU_CONFIGURACION) {
+  else if (navigation.getEstado() == MENU_CONFIGURACION) {
 
     menuActual = menuConfiguracion;
     cantidadOpciones = NUM_OPCIONES_CONFIGURACION;
   }
-  else if (estadoActual == MENU_HORA_FECHA) {
+  else if (navigation.getEstado() == MENU_HORA_FECHA) {
 
     menuActual = menuHoraFecha;
     cantidadOpciones = NUM_OPCIONES_HORA_FECHA;
@@ -867,13 +825,13 @@ void mostrarMenuActual() {
   // Determinar la primera opción a mostrar en la pantalla
   int primeraOpcion;
 
-  if (opcionSeleccionada < 2) {
+  if (navigation.getOpcionSeleccionada() < 2) {
 
     primeraOpcion = 0;
 
   } else {
 
-    primeraOpcion = opcionSeleccionada - 1;
+    primeraOpcion = navigation.getOpcionSeleccionada() - 1;
   }
 
   // Dibujar las opciones en la pantalla
@@ -886,7 +844,7 @@ void mostrarMenuActual() {
       lcd.setCursor(0, fila);
 
       // Mostrar un indicador ">" si la opción actual es la seleccionada
-      if (opcionActual == opcionSeleccionada) {
+      if (opcionActual == navigation.getOpcionSeleccionada()) {
 
         lcd.print(">");
       } else {
@@ -1566,21 +1524,10 @@ void manejarPantallaCalibracion() {
 }
 
 void entrarEstado(Estado nuevoEstado) {
-  
-  // Guardar el estado actual y la opción seleccionada en la pila
-  if (posicionPila < MAX_PROFUNDIDAD) {
-    
-    pila[posicionPila].estado = estadoActual;
-    pila[posicionPila].opcionSeleccionada = opcionSeleccionada;
 
-    posicionPila++;
+  if (!navigation.entrarEstado(nuevoEstado)) {
+    return;
   }
-
-  // Cambiar al nuevo estado
-  estadoActual = nuevoEstado;
-
-  // Reiniciar la opción seleccionada al entrar a un nuevo estado
-  opcionSeleccionada = 0;
 
   // Guardar la unidad actual antes de cambiar
   if (nuevoEstado == MENU_UNIDADES) {
@@ -1637,7 +1584,7 @@ void entrarEstado(Estado nuevoEstado) {
 // ─────────────────────────────
 void mostrarEstado() {
 
-  switch (estadoActual) {
+  switch (navigation.getEstado()) {
 
     // Menu principal
     case MENU_PRINCIPAL:
